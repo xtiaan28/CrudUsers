@@ -1,0 +1,16 @@
+type User {
+    userId: Int!
+    username: String!
+    password: String!
+    email: String!
+    roleId: Int
+    createdAt: String
+}
+
+type Mutation {
+    updateUser(userId: Int!, username: String, password: String, email: String, roleId: Int): Boolean
+    deleteUser(userId: Int!): Boolean
+}
+type Query {
+    _noop: String
+}
