@@ -26,21 +26,19 @@ public class UserGraphQLFunction {
 
     static {
         try {
-            // Cargar el esquema
             TypeDefinitionRegistry typeRegistry = new SchemaParser().parse(
                     new InputStreamReader(
                             UserGraphQLFunction.class.getResourceAsStream("/schema.graphqls"),
                             StandardCharsets.UTF_8));
 
-            // Wiring
             RuntimeWiring wiring = RuntimeWiring.newRuntimeWiring()
                     .type("Mutation", builder -> builder
                             .dataFetcher("updateUser", env -> {
-                                int userId = env.getArgument("userId");
-                                String username = env.getArgument("username");
-                                String password = env.getArgument("password");
-                                String email = env.getArgument("email");
-                                Integer roleId = env.getArgument("roleId");
+                                Integer userId = env.getArgument("userId");
+                                String username = env.containsArgument("username") ? env.getArgument("username") : null;
+                                String password = env.containsArgument("password") ? env.getArgument("password") : null;
+                                String email = env.containsArgument("email") ? env.getArgument("email") : null;
+                                Integer roleId = env.containsArgument("roleId") ? env.getArgument("roleId") : null;
 
                                 User user = new User();
                                 user.setUserId(userId);
@@ -49,19 +47,38 @@ public class UserGraphQLFunction {
                                 user.setEmail(email);
                                 user.setRoleId(roleId);
 
-                                boolean result = UserService.updateUser(user);
-                                return result ? user : null; // Si se actualiza, retornamos el usuario actualizado
+                                ExecutionContext context = env.getGraphQlContext().get("context");
+
+                                context.getLogger()
+                                        .info("Enviando usuario al Event Grid para ser actualizado: " + user);
+                                // Publicar evento en Event Grid
+                                EventGridPublisher.publishEvent(
+                                        "User.Updated",
+                                        "CrudUsers/users",
+                                        user, // Publicar el usuario actualizado
+                                        context);
+                                return user; // Retornar el usuario actualizado
+
                             })
                             .dataFetcher("deleteUser", env -> {
                                 int userId = env.getArgument("userId");
-                                boolean result = UserService.deleteUser(userId);
-                                return result;
+                                ExecutionContext context = env.getGraphQlContext().get("context");
+                                context.getLogger().info("Usuario con ID " + userId
+                                        + " marcado para eliminación. Enviando evento de eliminación a Event Grid.");
+                                EventGridPublisher.publishEvent(
+                                        "User.Deleted",
+                                        "CrudUsers/users",
+                                        Map.of("userId", userId),
+                                        context);
+
+                                return true;
                             }))
                     .build();
 
-            SchemaGenerator schemaGenerator = new SchemaGenerator();
-            GraphQLSchema graphQLSchema = schemaGenerator.makeExecutableSchema(typeRegistry, wiring);
+            GraphQLSchema graphQLSchema = new SchemaGenerator()
+                    .makeExecutableSchema(typeRegistry, wiring);
             graphQL = GraphQL.newGraphQL(graphQLSchema).build();
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -72,8 +89,6 @@ public class UserGraphQLFunction {
             @HttpTrigger(name = "req", methods = {
                     HttpMethod.POST }, authLevel = AuthorizationLevel.ANONYMOUS, route = "graphql-users") HttpRequestMessage<Optional<Map<String, Object>>> request,
             final ExecutionContext context) {
-        
-        
 
         try {
             Map<String, Object> body = request.getBody().orElse(null);
@@ -85,19 +100,19 @@ public class UserGraphQLFunction {
 
             String query = (String) body.get("query");
 
-            GraphQL graphQL = GraphQLProvider.getGraphQL();
             ExecutionInput executionInput = ExecutionInput.newExecutionInput()
                     .query(query)
+                    .graphQLContext(Map.of("context", context)) // Pasamos ExecutionContext
                     .build();
 
             ExecutionResult result = graphQL.execute(executionInput);
+
             return request.createResponseBuilder(HttpStatus.OK)
                     .header("Content-Type", "application/json")
                     .body(result.toSpecification())
                     .build();
 
         } catch (Exception e) {
-            
             return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error ejecutando GraphQL: " + e.getMessage())
                     .build();

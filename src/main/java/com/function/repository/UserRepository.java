@@ -78,31 +78,59 @@ public class UserRepository {
     }
     
     public static boolean updateUser(User user) throws SQLException {
-        String sql = "UPDATE " + TABLE_NAME + " SET USERNAME = ?, PASSWORD = ?, EMAIL = ?, ROLE_ID = ? WHERE USER_ID = ?";
-
+        StringBuilder sql = new StringBuilder("UPDATE " + TABLE_NAME + " SET ");
+        List<Object> values = new ArrayList<>();
+    
+        if (user.getUsername() != null) {
+            sql.append("USERNAME = ?, ");
+            values.add(user.getUsername());
+        }
+        if (user.getPassword() != null) {
+            sql.append("PASSWORD = ?, ");
+            values.add(user.getPassword());
+        }
+        if (user.getEmail() != null) {
+            sql.append("EMAIL = ?, ");
+            values.add(user.getEmail());
+        }
+        if (user.getRoleId() != null) {
+            sql.append("ROLE_ID = ?, ");
+            values.add(user.getRoleId());
+        }
+    
+        // Si no hay campos para actualizar, retornar false
+        if (values.isEmpty()) {
+            System.out.println("No se proporcionaron campos para actualizar.");
+            return false;
+        }
+    
+        // Eliminar la última coma y espacio
+        sql.setLength(sql.length() - 2);
+        sql.append(" WHERE USER_ID = ?");
+        values.add(user.getUserId());
+    
+        System.out.println("Ejecutando SQL dinámico: " + sql);
+    
         try (Connection conn = OracleDBConnection.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            System.out.println("Ejecutando SQL: " + sql);
-            System.out.println("Datos para actualizar:");
-            System.out.println("Username: " + user.getUsername());
-            System.out.println("Password: " + user.getPassword());
-            System.out.println("Email: " + user.getEmail());
-            System.out.println("Role ID: " + user.getRoleId());
-            System.out.println("User ID: " + user.getUserId());
-
-            stmt.setString(1, user.getUsername());
-            stmt.setString(2, user.getPassword());
-            stmt.setString(3, user.getEmail());
-            stmt.setObject(4, user.getRoleId(), Types.INTEGER);
-            stmt.setInt(5, user.getUserId());
-
+             PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+    
+            // Asignar parámetros dinámicamente
+            for (int i = 0; i < values.size(); i++) {
+                Object value = values.get(i);
+                if (value instanceof Integer) {
+                    stmt.setInt(i + 1, (Integer) value);
+                } else {
+                    stmt.setString(i + 1, value.toString());
+                }
+            }
+    
             int rowsAffected = stmt.executeUpdate();
             System.out.println("Filas actualizadas: " + rowsAffected);
-
-            return rowsAffected > 0; // Devuelve true si se actualizó al menos 1 fila
+    
+            return rowsAffected > 0;
         }
     }
+    
     
     public static boolean deleteUser(int userId) throws SQLException {
         try (Connection conn = OracleDBConnection.getConnection();

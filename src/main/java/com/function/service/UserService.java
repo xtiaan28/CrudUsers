@@ -23,8 +23,9 @@ public class UserService {
     }
 
     // Actualizar un usuario existente
-    public static boolean updateUser(User user) throws SQLException {
-        return UserRepository.updateUser(user);
+    public static User updateUser(User user) throws SQLException {
+        boolean success = UserRepository.updateUser(user);
+        return success ? user : null;
     }
 
     // Eliminar un usuario por ID

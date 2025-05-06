@@ -8,7 +8,7 @@ type User {
 }
 
 type Mutation {
-    updateUser(userId: Int!, username: String, password: String, email: String, roleId: Int): Boolean
+    updateUser(userId: Int!, username: String, password: String, email: String, roleId: Int): User
     deleteUser(userId: Int!): Boolean
 }
 type Query {
