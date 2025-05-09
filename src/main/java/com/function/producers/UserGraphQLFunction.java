@@ -1,4 +1,4 @@
-package com.function;
+package com.function.producers;
 
 import com.function.model.User;
 import com.function.provider.GraphQLProvider;

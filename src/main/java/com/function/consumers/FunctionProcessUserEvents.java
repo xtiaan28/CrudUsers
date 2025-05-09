@@ -1,4 +1,4 @@
-package com.function;
+package com.function.consumers;
 
 import com.azure.messaging.eventgrid.EventGridEvent;
 import com.function.model.User;

@@ -32,4 +32,8 @@ public class UserService {
     public static boolean deleteUser(int userId) throws SQLException {
         return UserRepository.deleteUser(userId);
     }
+
+    public static boolean assignRoleToUser(int userId, int roleId)throws SQLException {
+        return UserRepository.assignRoleToUser(userId, roleId);
+    }
 }

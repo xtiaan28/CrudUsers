@@ -1,4 +1,4 @@
-package com.function;
+package com.function.producers;
 
 
 import com.microsoft.azure.functions.ExecutionContext;
